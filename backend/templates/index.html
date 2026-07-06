@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fraud Detection Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- ============== TOP BAR ============== -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <span class="pulse-dot"></span>
+        <div>
+          <h1>Fraud Detection Console</h1>
+          <div class="eyebrow">AI-Enabled Digital Banking Security</div>
+        </div>
+      </div>
+      <div class="topbar-status">
+        <span id="modelStatusChip" class="status-chip">checking model…</span>
+        <span id="clock"></span>
+      </div>
+    </header>
+
+    <!-- ============== MAIN GRID ============== -->
+    <main class="main-grid">
+
+      <!-- ---------- LEFT COLUMN: input + result ---------- -->
+      <div class="left-col">
+
+        <section class="panel">
+          <div class="panel-title">
+            <span>Transaction Input</span>
+          </div>
+
+          <form id="txnForm">
+            <div class="form-group">
+              <label for="amount">Transaction amount (₹ / $)</label>
+              <input type="number" id="amount" name="amount" step="0.01" min="0" placeholder="e.g. 2499.00" required />
+            </div>
+
+            <div class="form-group">
+              <label for="time">Seconds since first transaction (optional)</label>
+              <input type="number" id="time" name="time" step="1" min="0" placeholder="e.g. 43200" />
+              <div class="form-hint">Leave blank to use the current time of day automatically.</div>
+            </div>
+
+            <button type="button" class="advanced-toggle" id="advancedToggle">+ Advanced: enter raw V1–V28 features</button>
+            <div class="advanced-fields" id="advancedFields"><!-- populated by JS --></div>
+
+            <button type="submit" class="btn-primary" id="submitBtn">
+              Analyze Transaction
+            </button>
+            <button type="button" class="btn-secondary" id="randomBtn">Try a random sample</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <span>Prediction Result</span>
+            <span id="resultModelTag" class="text-faint" style="font-family: var(--font-mono); font-size: 11px;"></span>
+          </div>
+
+          <div id="resultEmpty" class="empty-state">
+            Submit a transaction to see its fraud risk assessment.
+          </div>
+
+          <div id="resultContent" style="display:none;">
+            <div class="gauge-wrap">
+              <svg class="gauge-svg" viewBox="0 0 220 130">
+                <!-- Gauge track: three colored arcs, low -> medium -> high risk -->
+                <path d="M 15 110 A 95 95 0 0 1 73 25" fill="none" stroke="#5eead4" stroke-width="14" stroke-linecap="round" opacity="0.35"/>
+                <path d="M 73 25 A 95 95 0 0 1 147 25" fill="none" stroke="#fbbf24" stroke-width="14" stroke-linecap="round" opacity="0.35"/>
+                <path d="M 147 25 A 95 95 0 0 1 205 110" fill="none" stroke="#f43f5e" stroke-width="14" stroke-linecap="round" opacity="0.35"/>
+                <!-- Needle -->
+                <g class="gauge-needle" id="gaugeNeedle">
+                  <line x1="110" y1="110" x2="110" y2="30" stroke="#e2e8f0" stroke-width="3" stroke-linecap="round"/>
+                  <circle cx="110" cy="110" r="6" fill="#e2e8f0"/>
+                </g>
+              </svg>
+              <div class="gauge-readout">
+                <div class="gauge-score" id="gaugeScore">0.00</div>
+                <div class="gauge-label">Risk Score</div>
+              </div>
+            </div>
+
+            <div id="verdictBanner" class="verdict-banner">—</div>
+
+            <div class="result-meta">
+              <div>
+                <div class="meta-label">Risk Tier</div>
+                <div id="metaRiskTier">—</div>
+              </div>
+              <div>
+                <div class="meta-label">Model Used</div>
+                <div id="metaModel">—</div>
+              </div>
+            </div>
+
+            <button type="button" class="btn-secondary" id="explainBtn">Explain this prediction (SHAP)</button>
+            <div id="shapContainer" class="mt-3" style="display:none;">
+              <div class="shap-list" id="shapList"></div>
+              <div id="shapMessage" class="text-faint mt-2" style="font-size: 11px;"></div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ---------- RIGHT COLUMN: dashboard ---------- -->
+      <div class="right-col">
+
+        <section class="stat-cards" id="statCards">
+          <div class="stat-card">
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-label">Total Scanned</div>
+          </div>
+          <div class="stat-card alert">
+            <div class="stat-value" id="statFraud">0</div>
+            <div class="stat-label">Fraud Flagged</div>
+          </div>
+          <div class="stat-card ok">
+            <div class="stat-value" id="statLegit">0</div>
+            <div class="stat-label">Legitimate</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="statRate">0%</div>
+            <div class="stat-label">Fraud Rate</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <span>Model Performance &amp; EDA Charts</span>
+          </div>
+          <div class="chart-tabs" id="chartTabs"><!-- populated by JS --></div>
+          <div class="chart-display" id="chartDisplay">
+            <span class="text-faint">Loading charts…</span>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <span>Fraud History</span>
+            <button type="button" class="btn-secondary" id="refreshHistoryBtn" style="width:auto; padding: 4px 12px; margin-top:0;">Refresh</button>
+          </div>
+          <div class="history-table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Amount</th>
+                  <th>Verdict</th>
+                  <th>Risk Score</th>
+                  <th>Risk Tier</th>
+                  <th>Model</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody">
+                <tr><td colspan="6" class="text-faint">No predictions yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </div>
+
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

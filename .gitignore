@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+*.egg-info/
+
+# Data & models (regeneratable via training script — keep repo light)
+data/raw/creditcard.csv
+data/processed/*.csv
+data/processed/prediction_history.json
+models/*.pkl
+models/*.json
+models/*.csv
+
+# Logs
+logs/*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
